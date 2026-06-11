@@ -1,0 +1,22 @@
+# Global Trade & Logistics Analytics Platform
+# Production requirements — all versions pinned.
+# Dev dependencies (pytest, black, ruff, mypy) are in requirements-dev.txt.
+
+# ── Core Framework ────────────────────────────────────────────────────────────
+Django==6.0.5
+psycopg[binary]==3.2.9
+
+# ── REST API ──────────────────────────────────────────────────────────────────
+djangorestframework==3.16.0
+djangorestframework-simplejwt==5.5.0
+django-filter==25.1
+
+# ── Static Files ──────────────────────────────────────────────────────────────
+whitenoise==6.9.0
+
+# ── Environment / Config ──────────────────────────────────────────────────────
+django-environ==0.11.2
+
+# ── Caching (optional Redis backend) ─────────────────────────────────────────
+redis==5.2.1
+django-redis==5.4.0

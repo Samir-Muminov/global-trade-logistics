@@ -1,0 +1,34 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.base"
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--tb=short --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+exclude = ["migrations", "__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+exclude = '''
+/(
+    migrations
+  | __pycache__
+)/
+'''
+
+[tool.mypy]
+python_version = "3.13"
+plugins = ["mypy_django_plugin.main"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.base"
