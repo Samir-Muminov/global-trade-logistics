@@ -153,8 +153,8 @@ class CargoFactory(DjangoModelFactory):
     gross_weight_kg = factory.LazyFunction(
         lambda: Decimal(str(random.randint(5000, 25000)))
     )
-    net_weight_kg = factory.LazyFunction(
-        lambda: Decimal(str(random.randint(4000, 20000)))
+    net_weight_kg = factory.LazyAttribute(
+        lambda o: o.gross_weight_kg * Decimal("0.92")
     )
     volume_cbm = factory.LazyFunction(
         lambda: Decimal(str(random.randint(20, 67)))

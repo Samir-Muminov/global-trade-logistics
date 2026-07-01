@@ -21,7 +21,6 @@ from django.db.models import (
     DurationField,
     ExpressionWrapper,
     F,
-    FloatField,
     IntegerField,
     OuterRef,
     Q,
@@ -35,10 +34,8 @@ from django.db.models.functions import (
     DenseRank,
     Lag,
     Now,
-    NthValue,
     Ntile,
     PercentRank,
-    Rank,
     RowNumber,
     TruncMonth,
 )
@@ -173,7 +170,8 @@ class ShipmentQuerySet(models.QuerySet):
         ⚠️ Cannot filter() on this annotation before it is resolved —
         wrap in a subquery or use .annotate() then filter on the outer queryset.
         """
-        from apps.logistics.models import TrackingEvent  # avoid circular import
+        from django.apps import apps as django_apps
+        TrackingEvent = django_apps.get_model("logistics", "TrackingEvent")
 
         latest_event_subquery = Subquery(
             TrackingEvent.objects.filter(
