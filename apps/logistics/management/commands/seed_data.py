@@ -194,7 +194,7 @@ class Command(BaseCommand):
                     "is_active": True,
                     "hub_ports": ["CNSHA", "SGSIN"],
                     "service_metadata": {
-                        "webhook_secret": f"secret-{code.lower()}-webhook-key-2025",
+                        "webhook_secret": __import__("secrets").token_hex(32),
                         "alliance": "2M" if code in ("MSCO", "MAEU") else "THE",
                     },
                 },

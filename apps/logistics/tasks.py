@@ -231,12 +231,26 @@ def process_unmatched_webhook(
     ).first()
 
     if shipment is None:
+        from datetime import datetime as _dt
+        try:
+            received_dt = _dt.fromisoformat(received_at.replace("Z", "+00:00"))
+            age_hours = (timezone.now() - received_dt).total_seconds() / 3600
+        except (ValueError, TypeError):
+            age_hours = 0
+
+        if age_hours > 24:
+            logger.error(
+                "Webhook %s expired after 24h without matching shipment %s. "
+                "Discarding — check carrier EDI configuration.",
+                webhook_id, shipment_reference,
+            )
+            return {"webhook_id": webhook_id, "status": "expired"}
+
         logger.warning(
             "Webhook %s: shipment %s still not found after retry %d/%d",
             webhook_id, shipment_reference,
             self.request.retries, self.max_retries,
         )
-        # Raise to trigger retry — Celery will retry up to max_retries times
         raise self.retry(
             countdown=30 * (2 ** self.request.retries),
             exc=ValueError(f"Shipment {shipment_reference} not found"),

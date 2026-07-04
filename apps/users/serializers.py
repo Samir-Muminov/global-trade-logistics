@@ -140,11 +140,10 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     Custom JWT serializer that adds user_type, company_id, and carrier_id
     to the token payload.
 
-    WHY: Eliminates DB queries in permission checks.
-    Without this: IsShipmentOwnerOrStaff must query DB to get user.company_id.
-    With this: company_id is in the JWT — permission check reads from token, no DB.
-
-    At 100 req/s, this saves 100 DB queries/second on authenticated endpoints.
+    # These claims are available for client-side use (e.g. show company name
+    # without an extra API call). Permission checks still use DB for authorization
+    # (request.user.company_id) — DB is always authoritative over token claims.
+    # Do NOT use JWT claims for authorization decisions.
     """
 
     @classmethod

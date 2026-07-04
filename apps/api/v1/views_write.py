@@ -189,10 +189,16 @@ class ShipmentCreateView(APIView):
 
                 break  # success — exit retry loop
 
-            except IntegrityError:
+            except IntegrityError as e:
+                if "idempotency_key" in str(e).lower():
+                    existing = _check_idempotency_key(idempotency_key)
+                    if existing:
+                        return Response(
+                            ShipmentListSerializer(existing).data,
+                            status=status.HTTP_200_OK,
+                        )
                 if attempt == max_retries - 1:
                     raise
-                # tracking_number collision (extremely rare) — retry with new one
                 continue
 
         shipment_out = (

@@ -131,6 +131,8 @@ def percentile_transit_times(carrier_id: uuid.UUID) -> list[dict]:
     Returns:
         [{"median_days": Decimal, "p95_days": Decimal, "sample_size": int}]
     """
+    if not isinstance(carrier_id, uuid.UUID):
+         raise ValueError(f"carrier_id must be UUID, got: {type(carrier_id)}")
     sql = """
         SELECT
             PERCENTILE_CONT(0.5) WITHIN GROUP (
@@ -188,6 +190,10 @@ def top_lanes_by_volume(limit: int = 10, days: int = 90) -> list[dict]:
 
     Parameters are passed as %s — no f-string SQL construction.
     """
+    if not isinstance(days, int) or days < 1 or days > 365:
+         raise ValueError(f"days must be int 1-365, got: {days!r}")
+    if not isinstance(limit, int) or limit < 1 or limit > 100:
+         raise ValueError(f"limit must be int 1-100, got: {limit!r}")
     sql = """
         SELECT
             s.route_id,
@@ -248,6 +254,8 @@ def exception_cascade_analysis(days: int = 30) -> list[dict]:
     At 50M events with ~2% exception rate = ~1M exception rows —
     the partial index keeps this to a manageable subset.
     """
+    if not isinstance(days, int) or days < 1 or days > 365:
+         raise ValueError(f"days must be int 1-365, got: {days!r}")
     sql = """
         SELECT
             te1.shipment_id,
@@ -302,8 +310,13 @@ def populate_carrier_snapshots(snapshot_date: date) -> int:
     from apps.logistics.models import AnalyticsSnapshot, Carrier
     from django.db.models import Avg, Count, Q, Sum
 
-    carriers = Carrier.objects.filter(is_active=True).values_list("id", flat=True)
+    from django.db import reset_queries
+    carriers = list(Carrier.objects.filter(is_active=True).values_list("id", flat=True))
     upserted = 0
+ 
+    for i, carrier_id in enumerate(carriers):
+          if i % 50 == 0 and i > 0:
+              reset_queries()
 
     for carrier_id in carriers:
         from apps.logistics.models import Shipment
