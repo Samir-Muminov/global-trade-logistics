@@ -676,7 +676,12 @@ class TestWebhookReceive:
 class TestHealthCheck:
 
     def test_health_check_no_auth_required(self, api_client):
-        """Health check must be accessible without authentication."""
+        """
+        Health check must be accessible without authentication.
+        In test environment Celery worker is not running — status can be
+        'ok' or 'degraded', but HTTP must always be 200 as long as DB is up.
+        """
         response = api_client.get("/api/v1/health/")
         assert response.status_code == status.HTTP_200_OK
-        assert response.json()["status"] == "ok"
+        assert response.json()["db"] == "ok"
+        assert response.json()["status"] in ("ok", "degraded")

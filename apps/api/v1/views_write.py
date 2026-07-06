@@ -581,57 +581,64 @@ class WebhookReceiveView(APIView):
 
 # ── HEALTH CHECK VIEW ──────────────────────────────────────────────────────────
 
-
 class HealthCheckView(APIView):
     """
     GET /api/v1/health/
-
-    Used by Railway healthcheck and monitoring systems.
-    No authentication required — Railway must call this without a token.
-    Not logged by AuditMiddleware (excluded from audit trail).
-
-    Checks:
-    - DB connection (simple SELECT 1)
-    - Returns 200 if healthy, 503 if any component down
-
-    Response time must be < 100ms — simple ping only, no aggregations.
+ 
+    Checks: DB, Cache (Redis), Celery worker reachability.
+    No authentication required — Railway calls this without a token.
+    Returns 200 if all components healthy, 503 if any component down.
+    Response time target: < 500ms (simple pings only, no aggregations).
     """
-
+ 
     permission_classes = []
     authentication_classes = []
-
+ 
     def get(self, request, *args, **kwargs):
-        # Check DB
-        db_status = "ok"
+        checks = {}
+ 
+        # ── DB check ──────────────────────────────────────────────────────────
         try:
             from django.db import connection
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
-        except Exception:
-            db_status = "error"
-
-        # Check cache
-        cache_status = "ok"
+            checks["db"] = "ok"
+        except Exception as e:
+            checks["db"] = f"error: {type(e).__name__}"
+ 
+        # ── Cache / Redis check ───────────────────────────────────────────────
         try:
             from django.core.cache import cache
-            cache.set("health_check", "1", timeout=5)
-            if cache.get("health_check") != "1":
-                cache_status = "error"
-        except Exception:
-            cache_status = "error"
-
-        overall = "ok" if db_status == "ok" else "degraded"
+            cache.set("health_check_ping", "1", timeout=10)
+            val = cache.get("health_check_ping")
+            checks["cache"] = "ok" if val == "1" else "error: value mismatch"
+        except Exception as e:
+            checks["cache"] = f"error: {type(e).__name__}"
+ 
+        # ── Celery worker check ───────────────────────────────────────────────
+        # Uses Celery inspect — checks if any worker is alive.
+        # Timeout: 1 second — must not block health check response.
+        try:
+            from config.celery import app as celery_app
+            inspector = celery_app.control.inspect(timeout=1.0)
+            active = inspector.ping()
+            checks["celery"] = "ok" if active else "no_workers"
+        except Exception as e:
+            checks["celery"] = f"error: {type(e).__name__}"
+ 
+        # DB failure = 503. Cache/Celery issues = 200 with degraded status.
+        # Railway must not restart the web process because Celery worker is down.
+        overall = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
         http_status = (
-            status.HTTP_200_OK if overall == "ok"
+            status.HTTP_200_OK if checks["db"] == "ok"
             else status.HTTP_503_SERVICE_UNAVAILABLE
         )
-
+ 
         return Response(
             {
                 "status": overall,
-                "db": db_status,
-                "cache": cache_status,
                 "version": "1.0.0",
+                **checks,
             },
             status=http_status,
         )
